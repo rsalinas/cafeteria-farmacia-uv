@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+VENV_PYTHON="$SCRIPT_DIR/.venv/bin/python"
+TARGET_SCRIPT="$SCRIPT_DIR/farmacafe_menu.py"
+
+if [[ ! -x "$VENV_PYTHON" ]]; then
+  echo "Error: no s'ha trobat l'entorn virtual en $SCRIPT_DIR/.venv" >&2
+  echo "Executa: python3 -m venv .venv && .venv/bin/pip install -r requirements.txt" >&2
+  exit 1
+fi
+
+exec "$VENV_PYTHON" "$TARGET_SCRIPT" "$@"
