@@ -33,6 +33,13 @@ def _element_classes(element):
     return []
 
 
+def _extract_clean_date(text):
+    match = re.search(r"(\d{1,2}[\/-]\d{1,2}[\/-]\d{4})", text)
+    if match:
+        return match.group(1)
+    return text.strip()
+
+
 def generate_menu_data(url=DEFAULT_URL):
     data = {
         "url": url,
@@ -57,7 +64,7 @@ def generate_menu_data(url=DEFAULT_URL):
 
         date_tag = menu_div.find("h6")
         if date_tag:
-            data["data_menu"] = date_tag.get_text(strip=True)
+            data["data_menu"] = _extract_clean_date(date_tag.get_text(strip=True))
 
         for section in menu_div.find_all("h4"):
             section_name = section.get_text(strip=True)

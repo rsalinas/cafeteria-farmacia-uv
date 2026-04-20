@@ -91,20 +91,22 @@ farmacaf --json
 Exemple real de la versió bàsica en data 20-04-2026:
 
 ```text
-=== Menú diario: 20-4-2026 ===
+=== 20-4-2026 ===
 
-Primeros platos:
+Primers plats:
 	- ENSALADA DE QUESO DE CABRA
 	- ARROZ NEGRO
 	- ESPINACAS SALTEADAS
 	- SOPA CASTELLANA
 
-Segundos platos:
+Segons plats:
 	- MILHOJAS DE PATATA
 	- SALMON A LA PLANCHA
 	- PECHUGA A LA CREMA
 
 PREU: 7,80 €/Persona
+
+Més informació: https://www.qrcarta.com/restaurant/burjassot/cafeteria-de-farmacia-uv/3616/?type=menu
 ```
 
 ## Dependències
