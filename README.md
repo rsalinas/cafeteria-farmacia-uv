@@ -35,6 +35,14 @@ Amb l'entorn virtual activat:
 python farmacafe_menu.py
 ```
 
+Per a eixida estructurada en JSON:
+
+```bash
+python farmacafe_menu.py --json
+```
+
+El JSON inclou claus com `primers`, `segons`, `preu`, `data_menu` i `url`.
+
 També el pots executar directament amb el Python del `venv`:
 
 ```bash
@@ -70,6 +78,12 @@ Després podràs executar:
 
 ```bash
 farmacaf
+```
+
+Per a JSON des de `farmacaf`:
+
+```bash
+farmacaf --json
 ```
 
 ## Eixida d'exemple
