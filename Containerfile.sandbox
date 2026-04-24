@@ -3,7 +3,7 @@ FROM python:3.12-alpine
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
-RUN addgroup -S app && adduser -S -G app app
+RUN addgroup -S -g 1000 app && adduser -S -u 1000 -G app app
 
 WORKDIR /app
 
@@ -11,6 +11,9 @@ COPY requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY src/ ./src/
+
+# Create writable state directory and ensure app user owns it
+RUN mkdir -p /app/.state && chown -R app:app /app
 
 USER app
 

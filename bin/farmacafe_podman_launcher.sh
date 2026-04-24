@@ -130,10 +130,15 @@ if [[ $NO_NETWORK -eq 1 ]]; then
   NETWORK_OPT=(--network none)
 fi
 
+# Mount options: default state dir + optional work dir
 MOUNT_OPTS=()
+mkdir -p "$REPO_DIR/.state"
+chmod 777 "$REPO_DIR/.state"
+MOUNT_OPTS+=(--volume "$REPO_DIR/.state:/app/.state:rw")
+
 if [[ -n "$WORK_DIR" ]]; then
   chmod o+rwx "$WORK_DIR" 2>/dev/null || true
-  MOUNT_OPTS=(--volume "$WORK_DIR:/work:rw")
+  MOUNT_OPTS+=(--volume "$WORK_DIR:/work:rw")
 fi
 
 READONLY_OPT=()
