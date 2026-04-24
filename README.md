@@ -129,6 +129,93 @@ Opcionalment pots desactivar xarxa:
 ./farmacafe_podman_launcher.sh --no-network -- --json --no-state-update
 ```
 
+## Automatització amb systemd (dl-dv)
+
+S'han afegit estos fitxers:
+
+- `install_systemd_monitor.sh`: instal·la i activa unitats user de systemd.
+- `farmacafe_monitor_run.sh`: executa la comprovació i dispara hook si detecta canvi.
+- `farmacafe_on_change.sh`: hook personalitzable (mail/Telegram).
+- `systemd/farmacafe-monitor.service.template`: plantilla del servei.
+- `systemd/farmacafe-monitor.timer.template`: plantilla del timer.
+
+### Instal·lació
+
+```bash
+chmod +x install_systemd_monitor.sh
+./install_systemd_monitor.sh
+```
+
+El timer queda configurat per executar-se només dilluns-divendres cada 5 minuts entre les 12:01 i les 13:56.
+
+### Com funciona
+
+1. El timer llança `farmacafe-monitor.service`.
+2. El servei executa `farmacafe_monitor_run.sh`.
+3. El runner crida `farmacafe_menu_plus.py --exit-code-on-change 10`.
+4. Si no hi ha canvi, acaba.
+5. Si hi ha canvi, executa `farmacafe_on_change.sh` i li passa el JSON complet com a argument.
+
+### Com provar manualment
+
+Execució directa del runner:
+
+```bash
+./farmacafe_monitor_run.sh
+```
+
+Execució directa del servei:
+
+```bash
+systemctl --user start farmacafe-monitor.service
+```
+
+### Logs i diagnòstic
+
+```bash
+systemctl --user status farmacafe-monitor.timer
+systemctl --user status farmacafe-monitor.service
+journalctl --user -u farmacafe-monitor.service -n 100 --no-pager
+```
+
+### Personalitzar notificacions
+
+Edita `farmacafe_on_change.sh` per enviar correu o Telegram. El primer argument del hook és el fitxer JSON amb tota la informació del canvi.
+
+### Executar encara que no hi haja sessió oberta
+
+Si vols que el timer continue funcionant sense login interactiu:
+
+```bash
+sudo loginctl enable-linger $USER
+```
+
+## Guia ràpida de les funcionalitats noves
+
+1. Extracció completa en JSON:
+
+```bash
+python farmacafe_menu_plus.py --json
+```
+
+2. Detecció de canvis (ignora data visible del dia):
+
+```bash
+python farmacafe_menu_plus.py --state-file /tmp/state.json --exit-code-on-change 10
+```
+
+3. Context per reparar parser amb IA sota demanda:
+
+```bash
+python farmacafe_parser_repair_helper.py --report-file parser_repair_context.json
+```
+
+4. Execució en contenidor aïllat:
+
+```bash
+./farmacafe_podman_launcher.sh --build -- --json --state-file /tmp/state.json
+```
+
 ## Comandament `farmacaf`
 
 El projecte inclou el script executable `farmacaf`, que força l'ús del `venv` local i executa sempre la versió bàsica.
