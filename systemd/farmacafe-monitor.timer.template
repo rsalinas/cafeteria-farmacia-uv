@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Cafeteria Farmacia UV watcher on weekdays every 5 minutes (12:01-13:56)
+
+[Timer]
+Unit=farmacafe-monitor.service
+OnCalendar=Mon..Fri *-*-* 12,13:01/5:00
+Persistent=true
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

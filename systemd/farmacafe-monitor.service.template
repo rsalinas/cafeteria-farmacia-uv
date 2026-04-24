@@ -1,0 +1,11 @@
+[Unit]
+Description=Cafeteria Farmacia UV menu watcher
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=__REPO_DIR__
+Environment=STATE_DIR=%h/.local/state/farmacafe-monitor
+Environment=HOOK_SCRIPT=__REPO_DIR__/farmacafe_on_change.sh
+ExecStart=__REPO_DIR__/farmacafe_monitor_run.sh
