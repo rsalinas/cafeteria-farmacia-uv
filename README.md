@@ -72,23 +72,63 @@ El fitxer inclou `html_content`, `parser_source`, `parse_output` i `parse_error`
 
 ## Execució aïllada amb Podman
 
+### Workflow de confiança
+
+La confiança en els scripts determina el mode d'execució:
+
+1. **Scripts de confiança** (código nostre, sense flags especials):
+   - `farmacafe_menu_plus.py`: ext. normal, pot escriure estat
+   - `farmacafe_parser_repair_helper.py`: ext. normal, prepara contexte de reparació
+
+2. **Parsers reparats per IA** (amb `--sandbox-mode`):
+   - Filesystem de només lectura per aïllar codi potencialment no fiable
+
+### Execució normal (script de confiança)
+
 ```bash
-./bin/farmacafe_podman_launcher.sh --build -- --json --state-file /tmp/farmacafe_state.json
+./bin/farmacafe_podman_launcher.sh --auto-build -- --json
 ```
 
 Característiques:
+- Filesystem escrivible (per a estat `.state/`)
+- `tmpfs` efímer per a `/tmp` i `/run`
+- Sense capacitats Linux (`--cap-drop=ALL`)
+- Límits de CPU (1), memòria (256M), PIDs (128)
+- Xarxa per defecte (sense internet si `--no-network`)
 
-- Sense bind mounts a fitxers locals.
-- Root filesystem només lectura.
-- `tmpfs` efímer per a `/tmp` i `/run`.
-- Sense capacitats Linux (`--cap-drop=ALL`).
-- Límits de CPU, memòria i PIDs.
+### Execució amb sandbox mode (parser de confiança baixa)
 
-Helper de reparació dins del contenidor:
+Per a parsers reparats per IA (codi no de confiar):
 
 ```bash
-./bin/farmacafe_podman_launcher.sh --script farmacafe_parser_repair_helper.py -- --report-file /tmp/parser_repair_context.json
+./bin/farmacafe_podman_launcher.sh --build --sandbox-mode -- --json --no-state-update
 ```
+
+`--sandbox-mode` activa:
+- Root filesystem de només lectura
+- No pot mutate cap fit local
+- Aïllament total de codi potencialment maligne
+
+### Workflow complet de reparació
+
+1. Executar menú i detectar error:
+   ```bash
+   ./bin/farmacafe_podman_launcher.sh -- --json
+   ```
+
+2. Generar context de reparació (script de confiança):
+   ```bash
+   python src/farmacafe_parser_repair_helper.py --report-file repair_context.json
+   ```
+
+3. Enviar `repair_context.json` a OpenAI API per reparar `src/farmacafe_parser.py`
+
+4. Testar parser reparatdu sense confiar (aïllat en sandbox):
+   ```bash
+   ./bin/farmacafe_podman_launcher.sh --sandbox-mode -- --json --no-state-update
+   ```
+
+5. Si funciona, acceptar canvi. Si no, repetir reparació.
 
 ## Automatització amb systemd (dl-dv)
 
