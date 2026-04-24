@@ -57,6 +57,78 @@ Versió més detallada (extracció estructurada i eixida completa):
 python farmacafe_menu_ext.py
 ```
 
+Nova versió completa amb detecció de canvis (ignorant la data mostrada al web):
+
+```bash
+python farmacafe_menu_plus.py
+```
+
+JSON complet (inclou seccions, plats, intoleràncies, metadades i detector de canvis):
+
+```bash
+python farmacafe_menu_plus.py --json
+```
+
+Forçar codi d'eixida quan detecta canvi respecte a l'últim snapshot:
+
+```bash
+python farmacafe_menu_plus.py --exit-code-on-change 10
+```
+
+El fitxer d'estat es guarda en `.state/farmacafe_menu_plus_state.json` i es pot canviar amb `--state-file`.
+
+Per a no modificar l'estat (mode només lectura):
+
+```bash
+python farmacafe_menu_plus.py --no-state-update
+```
+
+Per incloure també el HTML cru dins del JSON (pot ser gran):
+
+```bash
+python farmacafe_menu_plus.py --json --include-html
+```
+
+## Parser separat i reparació sota demanda
+
+El parsing de la web està separat i reduït en `farmacafe_parser.py`.
+
+Per preparar un paquet de diagnòstic (HTML + codi parser + eixida/error) pensat per enviar a OpenAI API només quan falle o sota demanda:
+
+```bash
+python farmacafe_parser_repair_helper.py --report-file parser_repair_context.json
+```
+
+Si el parser falla, el script torna codi `2` i deixa el JSON llest per analitzar i corregir el parser automàticament.
+
+## Execució aïllada amb Podman
+
+Per executar els scripts en un contenidor mínim, sense accés al sistema de fitxers local (sense bind mounts), usa:
+
+```bash
+./farmacafe_podman_launcher.sh --build -- --json --state-file /tmp/farmacafe_state.json
+```
+
+Característiques de l'aïllament:
+
+- Sense muntatges de directoris locals.
+- Root filesystem en mode només lectura (`--read-only`).
+- Només `/tmp` i `/run` en `tmpfs` efímer.
+- Sense capacitats Linux (`--cap-drop=ALL`) i amb `no-new-privileges`.
+- Límits de CPU, memòria i PIDs.
+
+Executar helper de reparació dins del contenidor:
+
+```bash
+./farmacafe_podman_launcher.sh --script farmacafe_parser_repair_helper.py -- --report-file /tmp/parser_repair_context.json
+```
+
+Opcionalment pots desactivar xarxa:
+
+```bash
+./farmacafe_podman_launcher.sh --no-network -- --json --no-state-update
+```
+
 ## Comandament `farmacaf`
 
 El projecte inclou el script executable `farmacaf`, que força l'ús del `venv` local i executa sempre la versió bàsica.
