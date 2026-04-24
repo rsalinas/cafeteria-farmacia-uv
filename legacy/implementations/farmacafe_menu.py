@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 import argparse
 import json
@@ -9,7 +8,9 @@ import sys
 import requests
 from bs4 import BeautifulSoup
 
-DEFAULT_URL = "https://www.qrcarta.com/restaurant/burjassot/cafeteria-de-farmacia-uv/3616/?type=menu"
+DEFAULT_URL = (
+    "https://www.qrcarta.com/restaurant/burjassot/cafeteria-de-farmacia-uv/3616/?type=menu"
+)
 
 
 def _section_key(section_title):
@@ -72,10 +73,14 @@ def generate_menu_data(url=DEFAULT_URL):
             dishes = []
 
             element = section.find_next_sibling()
-            while element and element.name != "h4" and "precio_menu" not in _element_classes(element):
+            while (
+                element and element.name != "h4" and "precio_menu" not in _element_classes(element)
+            ):
                 if element.name == "p" and "plato" in _element_classes(element):
                     dish_b = element.find("b")
-                    dish_name = dish_b.get_text(strip=True) if dish_b else element.get_text(strip=True)
+                    dish_name = (
+                        dish_b.get_text(strip=True) if dish_b else element.get_text(strip=True)
+                    )
                     if dish_name:
                         dishes.append(dish_name)
                 element = element.find_next_sibling()
@@ -126,8 +131,12 @@ def render_menu_text(data):
 
 
 def build_parser():
-    parser = argparse.ArgumentParser(description="Scraper bàsic del menú de la cafeteria de Farmàcia UV")
-    parser.add_argument("--json", action="store_true", dest="json_output", help="Mostra l'eixida en JSON")
+    parser = argparse.ArgumentParser(
+        description="Scraper bàsic del menú de la cafeteria de Farmàcia UV"
+    )
+    parser.add_argument(
+        "--json", action="store_true", dest="json_output", help="Mostra l'eixida en JSON"
+    )
     parser.add_argument("--url", default=DEFAULT_URL, help="URL del menú a extraure")
     return parser
 
@@ -142,6 +151,7 @@ def main():
         print(render_menu_text(data))
 
     return 1 if data.get("error") else 0
+
 
 if __name__ == "__main__":
     sys.exit(main())

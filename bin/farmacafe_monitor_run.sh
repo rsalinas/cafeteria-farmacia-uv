@@ -8,8 +8,9 @@ while [[ -h "$SCRIPT_PATH" ]]; do
   [[ "$SCRIPT_PATH" != /* ]] && SCRIPT_PATH="$SCRIPT_DIR/$SCRIPT_PATH"
 done
 SCRIPT_DIR="$(cd -P "$(dirname "$SCRIPT_PATH")" && pwd)"
+REPO_DIR="$(cd -P "$SCRIPT_DIR/.." && pwd)"
 
-PYTHON_BIN="${PYTHON_BIN:-$SCRIPT_DIR/.venv/bin/python}"
+PYTHON_BIN="${PYTHON_BIN:-$REPO_DIR/.venv/bin/python}"
 MENU_URL="${MENU_URL:-https://www.qrcarta.com/restaurant/burjassot/cafeteria-de-farmacia-uv/3616/?type=menu}"
 STATE_DIR="${STATE_DIR:-$HOME/.local/state/farmacafe-monitor}"
 STATE_FILE="${STATE_FILE:-$STATE_DIR/menu_state.json}"
@@ -25,7 +26,7 @@ mkdir -p "$STATE_DIR"
 TMP_JSON="$LAST_JSON.tmp"
 
 set +e
-"$PYTHON_BIN" "$SCRIPT_DIR/farmacafe_menu_plus.py" \
+"$PYTHON_BIN" "$REPO_DIR/src/farmacafe_menu_plus.py" \
   --url "$MENU_URL" \
   --json \
   --state-file "$STATE_FILE" \

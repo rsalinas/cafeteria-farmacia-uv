@@ -7,5 +7,5 @@ After=network-online.target
 Type=oneshot
 WorkingDirectory=__REPO_DIR__
 Environment=STATE_DIR=%h/.local/state/farmacafe-monitor
-Environment=HOOK_SCRIPT=__REPO_DIR__/farmacafe_on_change.sh
-ExecStart=__REPO_DIR__/farmacafe_monitor_run.sh
+Environment=HOOK_SCRIPT=__REPO_DIR__/bin/farmacafe_on_change.sh
+ExecStart=__REPO_DIR__/bin/farmacafe_monitor_run.sh

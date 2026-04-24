@@ -12,11 +12,12 @@ while [[ -h "$SOURCE" ]]; do
 done
 
 SCRIPT_DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
-VENV_PYTHON="$SCRIPT_DIR/.venv/bin/python"
-TARGET_SCRIPT="$SCRIPT_DIR/farmacafe_menu.py"
+REPO_DIR="$(cd -P "$SCRIPT_DIR/.." && pwd)"
+VENV_PYTHON="$REPO_DIR/.venv/bin/python"
+TARGET_SCRIPT="$REPO_DIR/src/farmacafe_menu_plus.py"
 
 if [[ ! -x "$VENV_PYTHON" ]]; then
-  echo "Error: no s'ha trobat l'entorn virtual en $SCRIPT_DIR/.venv" >&2
+  echo "Error: no s'ha trobat l'entorn virtual en $REPO_DIR/.venv" >&2
   echo "Executa: python3 -m venv .venv && .venv/bin/pip install -r requirements.txt" >&2
   exit 1
 fi

@@ -15,7 +15,9 @@ import requests
 
 from farmacafe_parser import ParseError, parse_menu_html
 
-DEFAULT_URL = "https://www.qrcarta.com/restaurant/burjassot/cafeteria-de-farmacia-uv/3616/?type=menu"
+DEFAULT_URL = (
+    "https://www.qrcarta.com/restaurant/burjassot/cafeteria-de-farmacia-uv/3616/?type=menu"
+)
 DEFAULT_STATE_FILE = Path(".state/farmacafe_menu_plus_state.json")
 
 
@@ -32,7 +34,9 @@ def fetch_html(url: str, timeout: int = 20) -> FetchResult:
     response.raise_for_status()
 
     fetched_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
-    return FetchResult(html=response.text, status_code=response.status_code, fetched_at_utc=fetched_at)
+    return FetchResult(
+        html=response.text, status_code=response.status_code, fetched_at_utc=fetched_at
+    )
 
 
 def build_normalized_snapshot(parsed: dict[str, Any]) -> dict[str, Any]:
@@ -64,7 +68,9 @@ def build_normalized_snapshot(parsed: dict[str, Any]) -> dict[str, Any]:
 
 
 def snapshot_fingerprint(snapshot: dict[str, Any]) -> str:
-    blob = json.dumps(snapshot, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    blob = json.dumps(snapshot, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode(
+        "utf-8"
+    )
     return hashlib.sha256(blob).hexdigest()
 
 
@@ -82,7 +88,16 @@ def write_state(path: Path, state: dict[str, Any]) -> None:
     path.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-def build_output(url: str, fetch_result: FetchResult, parsed: dict[str, Any], normalized: dict[str, Any], changed: bool, previous: dict[str, Any] | None, state_file: Path, include_html: bool) -> dict[str, Any]:
+def build_output(
+    url: str,
+    fetch_result: FetchResult,
+    parsed: dict[str, Any],
+    normalized: dict[str, Any],
+    changed: bool,
+    previous: dict[str, Any] | None,
+    state_file: Path,
+    include_html: bool,
+) -> dict[str, Any]:
     current_fp = snapshot_fingerprint(normalized)
     previous_fp = (previous or {}).get("fingerprint")
 
@@ -124,7 +139,9 @@ def render_text(data: dict[str, Any]) -> str:
 
     lines.append(f"Menu date shown by site: {menu.get('display_date') or 'unknown'}")
     lines.append(f"Checked at UTC: {data['source']['fetched_at_utc']}")
-    lines.append(f"Changed vs previous snapshot: {data['change_detection']['changed_since_previous_snapshot']}")
+    lines.append(
+        f"Changed vs previous snapshot: {data['change_detection']['changed_since_previous_snapshot']}"
+    )
 
     restaurant = parsed.get("restaurant", {})
     if restaurant.get("name"):
@@ -153,10 +170,21 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Extended menu scraper with change detection")
     parser.add_argument("--url", default=DEFAULT_URL, help="Menu URL")
     parser.add_argument("--json", action="store_true", dest="json_output", help="Print JSON output")
-    parser.add_argument("--state-file", type=Path, default=DEFAULT_STATE_FILE, help="Path to state snapshot file")
-    parser.add_argument("--include-html", action="store_true", help="Include raw HTML in JSON output")
-    parser.add_argument("--no-state-update", action="store_true", help="Compute changes but do not write state file")
-    parser.add_argument("--exit-code-on-change", type=int, default=None, help="Optional exit code when a change is detected")
+    parser.add_argument(
+        "--state-file", type=Path, default=DEFAULT_STATE_FILE, help="Path to state snapshot file"
+    )
+    parser.add_argument(
+        "--include-html", action="store_true", help="Include raw HTML in JSON output"
+    )
+    parser.add_argument(
+        "--no-state-update", action="store_true", help="Compute changes but do not write state file"
+    )
+    parser.add_argument(
+        "--exit-code-on-change",
+        type=int,
+        default=None,
+        help="Optional exit code when a change is detected",
+    )
     return parser.parse_args()
 
 
@@ -167,7 +195,11 @@ def main() -> int:
         fetch_result = fetch_html(args.url)
     except requests.RequestException as exc:
         payload = {"error": f"HTTP fetch error: {exc}"}
-        print(json.dumps(payload, ensure_ascii=False, indent=2) if args.json_output else payload["error"])
+        print(
+            json.dumps(payload, ensure_ascii=False, indent=2)
+            if args.json_output
+            else payload["error"]
+        )
         return 1
 
     try:

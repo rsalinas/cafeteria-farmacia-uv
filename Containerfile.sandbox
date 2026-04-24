@@ -10,9 +10,7 @@ WORKDIR /app
 COPY requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY farmacafe_parser.py ./farmacafe_parser.py
-COPY farmacafe_menu_plus.py ./farmacafe_menu_plus.py
-COPY farmacafe_parser_repair_helper.py ./farmacafe_parser_repair_helper.py
+COPY src/ ./src/
 
 USER app
 

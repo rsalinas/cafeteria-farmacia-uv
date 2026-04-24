@@ -7,7 +7,8 @@ while [[ -h "$SCRIPT_PATH" ]]; do
   SCRIPT_PATH="$(readlink "$SCRIPT_PATH")"
   [[ "$SCRIPT_PATH" != /* ]] && SCRIPT_PATH="$SCRIPT_DIR/$SCRIPT_PATH"
 done
-REPO_DIR="$(cd -P "$(dirname "$SCRIPT_PATH")" && pwd)"
+SCRIPT_DIR="$(cd -P "$(dirname "$SCRIPT_PATH")" && pwd)"
+REPO_DIR="$(cd -P "$SCRIPT_DIR/.." && pwd)"
 
 USER_SYSTEMD_DIR="${HOME}/.config/systemd/user"
 SERVICE_TEMPLATE="$REPO_DIR/systemd/farmacafe-monitor.service.template"
@@ -31,7 +32,7 @@ mkdir -p "$USER_SYSTEMD_DIR"
 sed "s|__REPO_DIR__|$REPO_DIR|g" "$SERVICE_TEMPLATE" > "$SERVICE_FILE"
 cp "$TIMER_TEMPLATE" "$TIMER_FILE"
 
-chmod +x "$REPO_DIR/farmacafe_monitor_run.sh" "$REPO_DIR/farmacafe_on_change.sh"
+chmod +x "$REPO_DIR/bin/farmacafe_monitor_run.sh" "$REPO_DIR/bin/farmacafe_on_change.sh"
 
 systemctl --user daemon-reload
 systemctl --user enable --now farmacafe-monitor.timer

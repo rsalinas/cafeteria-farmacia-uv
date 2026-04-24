@@ -6,10 +6,19 @@ CONTAINERFILE="Containerfile.sandbox"
 SCRIPT="farmacafe_menu_plus.py"
 NO_NETWORK=0
 
+SCRIPT_PATH="${BASH_SOURCE[0]}"
+while [[ -h "$SCRIPT_PATH" ]]; do
+  SCRIPT_DIR="$(cd -P "$(dirname "$SCRIPT_PATH")" && pwd)"
+  SCRIPT_PATH="$(readlink "$SCRIPT_PATH")"
+  [[ "$SCRIPT_PATH" != /* ]] && SCRIPT_PATH="$SCRIPT_DIR/$SCRIPT_PATH"
+done
+SCRIPT_DIR="$(cd -P "$(dirname "$SCRIPT_PATH")" && pwd)"
+REPO_DIR="$(cd -P "$SCRIPT_DIR/.." && pwd)"
+
 usage() {
   cat <<'EOF'
 Usage:
-  ./farmacafe_podman_launcher.sh [options] -- [script args]
+  ./bin/farmacafe_podman_launcher.sh [options] -- [script args]
 
 Options:
   --build              Build sandbox image before running
@@ -20,15 +29,15 @@ Options:
   -h, --help           Show this help
 
 Examples:
-  ./farmacafe_podman_launcher.sh --build -- --json --state-file /tmp/state.json
-  ./farmacafe_podman_launcher.sh --script farmacafe_parser_repair_helper.py -- --report-file /tmp/report.json
+  ./bin/farmacafe_podman_launcher.sh --build -- --json --state-file /tmp/state.json
+  ./bin/farmacafe_podman_launcher.sh --script farmacafe_parser_repair_helper.py -- --report-file /tmp/report.json
 EOF
 }
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --build)
-      podman build -t "$IMAGE_NAME" -f "$CONTAINERFILE" .
+      podman build -t "$IMAGE_NAME" -f "$REPO_DIR/$CONTAINERFILE" "$REPO_DIR"
       shift
       ;;
     --image)
@@ -91,4 +100,4 @@ exec podman run --rm \
   --tmpfs /run:rw,noexec,nosuid,nodev,size=16m \
   "${NETWORK_OPT[@]}" \
   "$IMAGE_NAME" \
-  "/app/$SCRIPT" "$@"
+  "/app/src/$SCRIPT" "$@"

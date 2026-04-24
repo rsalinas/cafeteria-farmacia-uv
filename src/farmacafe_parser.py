@@ -76,7 +76,11 @@ def parse_menu_html(html: str, source_url: str | None = None) -> dict[str, Any]:
         while cursor and cursor.name != "h4" and "precio_menu" not in _classes(cursor):
             if cursor.name == "p" and "plato" in _classes(cursor):
                 name_bold = cursor.find("b")
-                dish_name = (name_bold.get_text(" ", strip=True) if name_bold else cursor.get_text(" ", strip=True)).strip()
+                dish_name = (
+                    name_bold.get_text(" ", strip=True)
+                    if name_bold
+                    else cursor.get_text(" ", strip=True)
+                ).strip()
                 allergens = []
                 allergen_titles = []
 

@@ -11,17 +11,25 @@ import requests
 
 from farmacafe_parser import ParseError, parse_menu_html
 
-DEFAULT_URL = "https://www.qrcarta.com/restaurant/burjassot/cafeteria-de-farmacia-uv/3616/?type=menu"
+DEFAULT_URL = (
+    "https://www.qrcarta.com/restaurant/burjassot/cafeteria-de-farmacia-uv/3616/?type=menu"
+)
 DEFAULT_REPORT_FILE = Path("parser_repair_context.json")
-DEFAULT_PARSER_FILE = Path("farmacafe_parser.py")
+DEFAULT_PARSER_FILE = Path(__file__).with_name("farmacafe_parser.py")
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Build parser repair context for on-demand AI analysis")
+    parser = argparse.ArgumentParser(
+        description="Build parser repair context for on-demand AI analysis"
+    )
     parser.add_argument("--url", default=DEFAULT_URL, help="Menu URL used to fetch html")
     parser.add_argument("--html-file", type=Path, help="Use local html file instead of downloading")
-    parser.add_argument("--parser-file", type=Path, default=DEFAULT_PARSER_FILE, help="Parser source file")
-    parser.add_argument("--report-file", type=Path, default=DEFAULT_REPORT_FILE, help="Output JSON report")
+    parser.add_argument(
+        "--parser-file", type=Path, default=DEFAULT_PARSER_FILE, help="Parser source file"
+    )
+    parser.add_argument(
+        "--report-file", type=Path, default=DEFAULT_REPORT_FILE, help="Output JSON report"
+    )
     return parser.parse_args()
 
 
