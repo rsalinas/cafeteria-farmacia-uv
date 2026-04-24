@@ -1,3 +1,6 @@
 .venv/
 __pycache__/
 *.pyc
+.state/
+parser_repair_context.json
+.ruff_cache/
