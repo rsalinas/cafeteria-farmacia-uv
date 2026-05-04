@@ -1,0 +1,22 @@
+#!/bin/bash
+set -euo pipefail
+
+# Resolve symlinks and find repo root
+SCRIPT_PATH="${BASH_SOURCE[0]}"
+while [[ -h "$SCRIPT_PATH" ]]; do
+  SCRIPT_DIR="$(cd -P "$(dirname "$SCRIPT_PATH")" && pwd)"
+  SCRIPT_PATH="$(readlink "$SCRIPT_PATH")"
+  [[ "$SCRIPT_PATH" != /* ]] && SCRIPT_PATH="$SCRIPT_DIR/$SCRIPT_PATH"
+done
+SCRIPT_DIR="$(cd -P "$(dirname "$SCRIPT_PATH")" && pwd)"
+REPO_DIR="$(cd -P "$SCRIPT_DIR/.." && pwd)"
+
+# Find Python from venv
+if [[ ! -f "$REPO_DIR/.venv/bin/python" ]]; then
+  echo "Error: venv not found at $REPO_DIR/.venv" >&2
+  echo "Setup venv with: python3 -m venv $REPO_DIR/.venv" >&2
+  exit 1
+fi
+
+# Execute repair helper with args
+exec "$REPO_DIR/.venv/bin/python" "$REPO_DIR/src/farmacafe_parser_repair_helper.py" "$@"

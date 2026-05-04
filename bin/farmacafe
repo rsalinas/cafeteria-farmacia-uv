@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Resolve symlinks so the project root is derived from the real file location.
+SOURCE="${BASH_SOURCE[0]}"
+while [[ -h "$SOURCE" ]]; do
+  SOURCE_DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+  SOURCE="$(readlink "$SOURCE")"
+  if [[ "$SOURCE" != /* ]]; then
+    SOURCE="$SOURCE_DIR/$SOURCE"
+  fi
+done
+
+SCRIPT_DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+REPO_DIR="$(cd -P "$SCRIPT_DIR/.." && pwd)"
+VENV_PYTHON="$REPO_DIR/.venv/bin/python"
+TARGET_SCRIPT="$REPO_DIR/src/farmacafe_menu_plus.py"
+
+if [[ ! -x "$VENV_PYTHON" ]]; then
+  echo "Error: no s'ha trobat l'entorn virtual en $REPO_DIR/.venv" >&2
+  echo "Executa: python3 -m venv .venv && .venv/bin/pip install -r requirements.txt" >&2
+  exit 1
+fi
+
+exec "$VENV_PYTHON" "$TARGET_SCRIPT" "$@"
