@@ -117,8 +117,64 @@ def parse_menu_html(html: str, source_url: str | None = None) -> dict[str, Any]:
                 }
             )
 
+    # Fallback for current QRCarta structure (<div class="menu menu-diario">)
+    if not sections:
+        diario_date = menu_div.find("div", class_="menu-diario-date")
+        if diario_date:
+            display_date = _extract_date(diario_date.get_text(" ", strip=True))
+
+        for section_div in menu_div.find_all("div", class_="menu-diario-section"):
+            label = section_div.find("div", class_="menu-diario-section-label")
+            section_title = label.get_text(" ", strip=True) if label else "Sección"
+            dishes = []
+
+            for plato in section_div.find_all("p", class_="plato"):
+                name_bold = plato.find("b")
+                dish_name = (
+                    name_bold.get_text(" ", strip=True)
+                    if name_bold
+                    else plato.get_text(" ", strip=True)
+                ).strip()
+                allergens = []
+                allergen_titles = []
+
+                allergen_row = plato.find_next_sibling("p")
+                if allergen_row and allergen_row.find_all("img"):
+                    for img in allergen_row.find_all("img"):
+                        item = {
+                            "title": (img.get("title") or "").strip() or None,
+                            "alt": (img.get("alt") or "").strip() or None,
+                            "src": (img.get("src") or "").strip() or None,
+                        }
+                        allergens.append(item)
+                        if item["title"]:
+                            allergen_titles.append(item["title"])
+
+                dishes.append(
+                    {
+                        "name": dish_name,
+                        "allergens": allergens,
+                        "allergen_titles": allergen_titles,
+                        "raw_html": str(plato),
+                    }
+                )
+
+            if dishes:
+                sections.append(
+                    {
+                        "title": section_title,
+                        "key": _slug(section_title),
+                        "dishes": dishes,
+                        "raw_html": str(section_div),
+                    }
+                )
+
     price_tag = menu_div.find("p", class_="precio_menu")
     price = price_tag.get_text(" ", strip=True) if price_tag else None
+    if not price:
+        price_div = menu_div.find("div", class_="menu-diario-precio")
+        if price_div:
+            price = price_div.get_text(" ", strip=True) or None
 
     includes = None
     for paragraph in menu_div.find_all("p"):
@@ -127,6 +183,10 @@ def parse_menu_html(html: str, source_url: str | None = None) -> dict[str, Any]:
         if "postre" in lower or "pan" in lower or "bebida" in lower:
             includes = text
             break
+    if not includes:
+        comments_div = menu_div.find("div", class_="menu-diario-comentarios")
+        if comments_div:
+            includes = comments_div.get_text(" ", strip=True) or None
 
     legend_items = []
     legend_div = menu_div.find("div", class_="leyenda")
