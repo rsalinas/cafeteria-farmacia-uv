@@ -85,13 +85,7 @@ def read_state(path: Path) -> dict[str, Any] | None:
 
 def write_state(path: Path, state: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    try:
-        path.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
-    except PermissionError:
-        # If we can't write due to permission issues (e.g., from container),
-        # remove the old file and create a new one
-        path.unlink()
-        path.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
+    path.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 def build_output(
