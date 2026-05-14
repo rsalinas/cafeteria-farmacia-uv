@@ -149,6 +149,8 @@ fi
 # Container security: optional read-only mode for untrusted scripts.
 # Default: writable filesystem for trusted scripts (menu_plus, helper).
 # Use --sandbox-mode for repaired parsers to isolate them.
+# --userns=keep-id preserves the host user's UID/GID inside the container,
+# avoiding permission issues with mounted volumes
 exec podman run --rm \
   "${READONLY_OPT[@]}" \
   --security-opt=no-new-privileges \
@@ -156,7 +158,7 @@ exec podman run --rm \
   --pids-limit=128 \
   --memory=256m \
   --cpus=1 \
-  --user 1000:1000 \
+  --userns=keep-id \
   --tmpfs /tmp:rw,noexec,nosuid,nodev,size=64m \
   --tmpfs /run:rw,noexec,nosuid,nodev,size=16m \
   "${NETWORK_OPT[@]}" \
