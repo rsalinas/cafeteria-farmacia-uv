@@ -4,3 +4,5 @@ __pycache__/
 .state/
 parser_repair_context.json
 .ruff_cache/
+.backups/
+openai_repair_response_last.json

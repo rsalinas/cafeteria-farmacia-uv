@@ -1,0 +1,173 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_PATH="${BASH_SOURCE[0]}"
+while [[ -h "$SCRIPT_PATH" ]]; do
+  SCRIPT_DIR="$(cd -P "$(dirname "$SCRIPT_PATH")" && pwd)"
+  SCRIPT_PATH="$(readlink "$SCRIPT_PATH")"
+  [[ "$SCRIPT_PATH" != /* ]] && SCRIPT_PATH="$SCRIPT_DIR/$SCRIPT_PATH"
+done
+SCRIPT_DIR="$(cd -P "$(dirname "$SCRIPT_PATH")" && pwd)"
+REPO_DIR="$(cd -P "$SCRIPT_DIR/.." && pwd)"
+
+REPORT_FILE="$REPO_DIR/parser_repair_context.json"
+PARSER_FILE="$REPO_DIR/src/farmacafe_parser.py"
+MODEL="${OPENAI_MODEL:-gpt-5.1}"
+FORCE_REPAIR=0
+
+usage() {
+  cat <<'EOF'
+Usage: farmacafe_repair_with_openai [options]
+
+Options:
+  --report-file PATH   Path to repair context JSON (default: parser_repair_context.json)
+  --parser-file PATH   Path to parser Python file (default: src/farmacafe_parser.py)
+  --model NAME         OpenAI model (default: gpt-5.1 or OPENAI_MODEL)
+  --force              Force repair even if parser currently works
+  -h, --help           Show this help
+
+Required env:
+  OPENAI_API_KEY       API key for OpenAI
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --report-file)
+      REPORT_FILE="$2"
+      shift 2
+      ;;
+    --parser-file)
+      PARSER_FILE="$2"
+      shift 2
+      ;;
+    --model)
+      MODEL="$2"
+      shift 2
+      ;;
+    --force)
+      FORCE_REPAIR=1
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "Unknown option: $1" >&2
+      usage
+      exit 1
+      ;;
+  esac
+done
+
+if [[ -z "${OPENAI_API_KEY:-}" ]]; then
+  echo "Error: OPENAI_API_KEY is not set" >&2
+  exit 1
+fi
+
+if ! command -v curl >/dev/null 2>&1; then
+  echo "Error: curl not found" >&2
+  exit 1
+fi
+
+if ! command -v jq >/dev/null 2>&1; then
+  echo "Error: jq not found" >&2
+  exit 1
+fi
+
+REPAIR_HELPER="$REPO_DIR/bin/farmacafe_repair"
+if [[ ! -x "$REPAIR_HELPER" ]]; then
+  echo "Error: repair helper not executable: $REPAIR_HELPER" >&2
+  exit 1
+fi
+
+echo "[repair] Generating repair context..."
+set +e
+"$REPAIR_HELPER" --report-file "$REPORT_FILE"
+repair_status=$?
+set -e
+
+if [[ $repair_status -eq 0 && $FORCE_REPAIR -ne 1 ]]; then
+  echo "[repair] Parser already works. Use --force to repair anyway."
+  exit 0
+fi
+
+if [[ $repair_status -ne 0 && $repair_status -ne 2 ]]; then
+  echo "[repair] Could not build repair context (status=$repair_status)." >&2
+  exit "$repair_status"
+fi
+
+if [[ ! -f "$REPORT_FILE" ]]; then
+  echo "[repair] Missing report file: $REPORT_FILE" >&2
+  exit 1
+fi
+
+TMP_REQUEST="$(mktemp)"
+TMP_RESPONSE="$(mktemp)"
+trap 'rm -f "$TMP_REQUEST" "$TMP_RESPONSE"' EXIT
+
+jq -n \
+  --arg model "$MODEL" \
+  --rawfile ctx "$REPORT_FILE" \
+  '{
+    model: $model,
+    input: [
+      {
+        role: "system",
+        content: "You are a Python parser repair specialist. Return ONLY the complete final source code for farmacafe_parser.py. Do not use markdown fences. Keep API and output schema stable unless parse_error demands adaptation."
+      },
+      {
+        role: "user",
+        content: "Repair parser using this JSON context:\n\n" + $ctx
+      }
+    ]
+  }' > "$TMP_REQUEST"
+
+echo "[repair] Requesting parser fix from OpenAI (model=$MODEL)..."
+curl -sS https://api.openai.com/v1/responses \
+  -H "Authorization: Bearer $OPENAI_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d @"$TMP_REQUEST" > "$TMP_RESPONSE"
+
+if [[ "$(jq -r '.error.message // empty' "$TMP_RESPONSE")" != "" ]]; then
+  echo "[repair] OpenAI API error:" >&2
+  jq -r '.error.message' "$TMP_RESPONSE" >&2
+  exit 1
+fi
+
+NEW_CODE="$(jq -r '[.output[]? | select(.type=="message") | .content[]? | select(.type=="output_text") | .text] | join("\n")' "$TMP_RESPONSE")"
+
+if [[ -z "$NEW_CODE" || "$NEW_CODE" == "null" ]]; then
+  echo "[repair] Could not extract parser source from API response." >&2
+  echo "[repair] Raw response saved at: $TMP_RESPONSE" >&2
+  cp "$TMP_RESPONSE" "$REPO_DIR/openai_repair_response_last.json"
+  exit 1
+fi
+
+if [[ "$NEW_CODE" != *"def parse_menu_html"* ]]; then
+  echo "[repair] Safety check failed: response does not look like parser source." >&2
+  cp "$TMP_RESPONSE" "$REPO_DIR/openai_repair_response_last.json"
+  exit 1
+fi
+
+mkdir -p "$REPO_DIR/.backups"
+STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
+BACKUP_FILE="$REPO_DIR/.backups/farmacafe_parser.py.$STAMP.bak"
+cp "$PARSER_FILE" "$BACKUP_FILE"
+
+printf '%s\n' "$NEW_CODE" > "$PARSER_FILE"
+
+PYCHECK_BIN="$REPO_DIR/.venv/bin/python"
+if [[ ! -x "$PYCHECK_BIN" ]]; then
+  PYCHECK_BIN="python3"
+fi
+
+echo "[repair] Validating parser syntax..."
+"$PYCHECK_BIN" -m py_compile "$PARSER_FILE"
+
+cp "$TMP_RESPONSE" "$REPO_DIR/openai_repair_response_last.json"
+
+echo "[repair] Parser updated successfully"
+echo "[repair] Backup: $BACKUP_FILE"
+echo "[repair] Response snapshot: $REPO_DIR/openai_repair_response_last.json"
