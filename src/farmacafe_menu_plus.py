@@ -85,6 +85,9 @@ def read_state(path: Path) -> dict[str, Any] | None:
 
 def write_state(path: Path, state: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
+    # Remove existing file to avoid permission issues from containers
+    if path.exists():
+        path.unlink()
     path.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
