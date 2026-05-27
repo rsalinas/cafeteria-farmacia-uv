@@ -16,6 +16,7 @@ STATE_DIR="${STATE_DIR:-$HOME/.local/state/farmacafe-monitor}"
 STATE_FILE="${STATE_FILE:-$STATE_DIR/menu_state.json}"
 LAST_JSON="${LAST_JSON:-$STATE_DIR/last_result.json}"
 HOOK_SCRIPT="${HOOK_SCRIPT:-$SCRIPT_DIR/farmacafe_on_change.sh}"
+STABILITY_POLLS="${STABILITY_POLLS:-2}"
 
 if [[ ! -x "$PYTHON_BIN" ]]; then
   echo "Python executable not found: $PYTHON_BIN" >&2
@@ -30,6 +31,7 @@ set +e
   --url "$MENU_URL" \
   --json \
   --state-file "$STATE_FILE" \
+  --stability-polls "$STABILITY_POLLS" \
   --exit-code-on-change 10 > "$TMP_JSON"
 status=$?
 set -e

@@ -88,18 +88,78 @@ def write_state(path: Path, state: dict[str, Any]) -> None:
     path.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
+def compute_stabilized_change(
+    *,
+    current_fingerprint: str,
+    previous_state: dict[str, Any] | None,
+    stability_polls: int,
+) -> dict[str, Any]:
+    previous_state = previous_state or {}
+    last_seen_fingerprint = previous_state.get("fingerprint")
+    last_notified_fingerprint = (
+        previous_state.get("last_notified_fingerprint") or last_seen_fingerprint
+    )
+
+    pending_fingerprint = previous_state.get("pending_fingerprint")
+    pending_count = int(previous_state.get("pending_count") or 0)
+    pending_first_seen_at_utc = previous_state.get("pending_first_seen_at_utc")
+
+    changed_since_previous_snapshot = (
+        last_seen_fingerprint is not None and last_seen_fingerprint != current_fingerprint
+    )
+    stabilized_change_detected = False
+
+    if last_notified_fingerprint is None:
+        # Bootstrap mode: first successful poll establishes baseline without notifying.
+        last_notified_fingerprint = current_fingerprint
+        pending_fingerprint = None
+        pending_count = 0
+        pending_first_seen_at_utc = None
+    elif current_fingerprint == last_notified_fingerprint:
+        pending_fingerprint = None
+        pending_count = 0
+        pending_first_seen_at_utc = None
+    else:
+        if pending_fingerprint == current_fingerprint:
+            pending_count += 1
+        else:
+            pending_fingerprint = current_fingerprint
+            pending_count = 1
+            pending_first_seen_at_utc = (
+                datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+            )
+
+        if pending_count >= stability_polls:
+            stabilized_change_detected = True
+            last_notified_fingerprint = current_fingerprint
+            pending_fingerprint = None
+            pending_count = 0
+            pending_first_seen_at_utc = None
+
+    return {
+        "changed_since_previous_snapshot": changed_since_previous_snapshot,
+        "stabilized_change_detected": stabilized_change_detected,
+        "last_seen_fingerprint": last_seen_fingerprint,
+        "last_notified_fingerprint": last_notified_fingerprint,
+        "pending_fingerprint": pending_fingerprint,
+        "pending_count": pending_count,
+        "pending_first_seen_at_utc": pending_first_seen_at_utc,
+    }
+
+
 def build_output(
     url: str,
     fetch_result: FetchResult,
     parsed: dict[str, Any],
     normalized: dict[str, Any],
-    changed: bool,
+    detection: dict[str, Any],
+    stability_polls: int,
     previous: dict[str, Any] | None,
     state_file: Path,
     include_html: bool,
 ) -> dict[str, Any]:
     current_fp = snapshot_fingerprint(normalized)
-    previous_fp = (previous or {}).get("fingerprint")
+    previous_fp = detection["last_seen_fingerprint"]
 
     output = {
         "error": None,
@@ -118,7 +178,13 @@ def build_output(
             "current_checked_at_utc": fetch_result.fetched_at_utc,
             "previous_fingerprint": previous_fp,
             "current_fingerprint": current_fp,
-            "changed_since_previous_snapshot": changed,
+            "changed_since_previous_snapshot": detection["changed_since_previous_snapshot"],
+            "stability_threshold_polls": stability_polls,
+            "last_notified_fingerprint": detection["last_notified_fingerprint"],
+            "pending_candidate_fingerprint": detection["pending_fingerprint"],
+            "pending_candidate_consecutive_count": detection["pending_count"],
+            "pending_candidate_first_seen_at_utc": detection["pending_first_seen_at_utc"],
+            "stabilized_change_detected": detection["stabilized_change_detected"],
             "comparison_basis": "normalized snapshot without display_date",
         },
     }
@@ -185,11 +251,29 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Optional exit code when a change is detected",
     )
+    parser.add_argument(
+        "--stability-polls",
+        type=int,
+        default=2,
+        help=(
+            "Number of consecutive polls required to confirm a new menu before "
+            "reporting a change (use 1 for immediate detection)"
+        ),
+    )
     return parser.parse_args()
 
 
 def main() -> int:
     args = parse_args()
+
+    if args.stability_polls < 1:
+        payload = {"error": "--stability-polls must be >= 1"}
+        print(
+            json.dumps(payload, ensure_ascii=False, indent=2)
+            if args.json_output
+            else payload["error"]
+        )
+        return 1
 
     try:
         fetch_result = fetch_html(args.url)
@@ -222,15 +306,19 @@ def main() -> int:
     normalized = build_normalized_snapshot(parsed)
     previous = read_state(args.state_file)
     current_fp = snapshot_fingerprint(normalized)
-    previous_fp = (previous or {}).get("fingerprint")
-    changed = previous_fp is not None and previous_fp != current_fp
+    detection = compute_stabilized_change(
+        current_fingerprint=current_fp,
+        previous_state=previous,
+        stability_polls=args.stability_polls,
+    )
 
     output = build_output(
         url=args.url,
         fetch_result=fetch_result,
         parsed=parsed,
         normalized=normalized,
-        changed=changed,
+        detection=detection,
+        stability_polls=args.stability_polls,
         previous=previous,
         state_file=args.state_file,
         include_html=args.include_html,
@@ -242,6 +330,10 @@ def main() -> int:
             {
                 "checked_at_utc": fetch_result.fetched_at_utc,
                 "fingerprint": current_fp,
+                "last_notified_fingerprint": detection["last_notified_fingerprint"],
+                "pending_fingerprint": detection["pending_fingerprint"],
+                "pending_count": detection["pending_count"],
+                "pending_first_seen_at_utc": detection["pending_first_seen_at_utc"],
                 "normalized_snapshot": normalized,
             },
         )
@@ -254,7 +346,10 @@ def main() -> int:
     if output.get("error"):
         return 1
 
-    if changed and args.exit_code_on_change is not None:
+    if (
+        output["change_detection"]["stabilized_change_detected"]
+        and args.exit_code_on_change is not None
+    ):
         return args.exit_code_on_change
 
     return 0

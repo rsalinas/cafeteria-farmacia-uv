@@ -74,12 +74,18 @@ python src/farmacafe_menu_plus.py --json
 ### Detecció de canvis (ignora la data visible del dia)
 
 ```bash
-python src/farmacafe_menu_plus.py --state-file /tmp/state.json --exit-code-on-change 10
+python src/farmacafe_menu_plus.py --state-file /tmp/state.json --stability-polls 2 --exit-code-on-change 10
 ```
 
 - Eixida `0`: sense canvi.
-- Eixida `10`: canvi detectat.
+- Eixida `10`: canvi estabilitzat detectat (el nou menú s'ha vist en `N` sondejos consecutius).
 - Eixida `1/2`: error d'execució/parsing.
+
+Paràmetres rellevants:
+
+- `--stability-polls N`: nombre de sondejos consecutius necessaris per confirmar un canvi.
+- Valor per defecte: `2`.
+- `--stability-polls 1`: comportament immediat (retrocompatible amb el model anterior).
 
 ### Parser separat i reparació sota demanda
 
@@ -189,7 +195,20 @@ chmod +x bin/install_systemd_monitor.sh
 ./bin/install_systemd_monitor.sh
 ```
 
-El timer s'executa només dilluns-divendres, cada 5 minuts, entre 12:01 i 13:56.
+El timer s'executa només dilluns-divendres, cada 10 minuts, entre 08:01 i 14:51.
+
+Per defecte, el monitor usa estabilització de 2 sondejos consecutius abans d'enviar notificacions.
+Es pot ajustar amb variable d'entorn:
+
+```bash
+STABILITY_POLLS=2 ./bin/farmacafe_monitor_run.sh
+```
+
+Exemple d'escenari:
+
+- Poll 1 detecta un nou menú `B` (venint de `A`): no notifica, queda com a candidat.
+- Poll 2 detecta `C`: reinicia candidat a `C`, encara sense notificar.
+- Poll 3 detecta `C` altra vegada: com que `C` es repeteix 2 vegades, notifica.
 
 Execució manual del runner:
 
@@ -244,6 +263,7 @@ cat > ~/.config/environment.d/farmacafe.conf <<EOF
 TELEGRAM_TOKEN=
 TELEGRAM_CHAT_ID=123456789
 EMAIL_TO=rausalinas@gmail.com
+STABILITY_POLLS=2
 EOF
 
 # Recarregar systemd per aplicar variables
